@@ -16,7 +16,7 @@ class MyThreadPools
   def my_download
     bread_name = ''
     while @bread_list.length.positive?
-      puts "bread list length:#{@bread_list.length}"
+      # puts "bread list length:#{@bread_list.length}"
       @mutex.synchronize do
         @bread_list.length.positive? ? bread_name = @bread_list.shift : break
       end
@@ -30,7 +30,7 @@ class MyThreadPools
     open("https://dog.ceo/api/breed/#{bread_name}/images", 'rb') do |read_file|
       result = JSON.parse(read_file.read)['message']
     end
-    CSV.open("./test/#{bread_name}.csv", 'a+') do |saved_file|
+    CSV.open("./data/#{bread_name}.csv", 'a+') do |saved_file|
       puts bread_name
       saved_file << headers
       result.each { |line| saved_file << %W[#{bread_name} #{line}] }
@@ -44,9 +44,9 @@ class MyThreadPools
         my_download
       end
     end
-    puts "Started At #{Time.now}\n"
+    # puts "Started At #{Time.now}\n"
     arr.each(&:join)
-    puts "End at #{Time.now}\n"
+    # puts "End at #{Time.now}\n"
   end
 end
 
@@ -54,6 +54,9 @@ mutex = Mutex
 bread_list = []
 open('https://dog.ceo/api/breeds/list') do |json|
   bread_list = JSON.parse(json.read)['message']
+  open('./data/updated_at.json', 'w') do |update_at|
+    bread_list.each { |file_name| update_at.write("#{file_name}.csv\n") }
+  end
 end
 mpt = MyThreadPools.new(bread_list, mutex)
 mpt.main
