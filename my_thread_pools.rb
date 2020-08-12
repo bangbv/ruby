@@ -6,11 +6,12 @@ require 'csv'
 
 # class for handling multi-threads
 class MyThreadPools
-  attr_accessor :bread_list, :mutex
+  attr_accessor :bread_list, :mutex, :hash
 
-  def initialize(bread_list, mutex)
+  def initialize(bread_list, mutex, hash)
     @mutex = mutex.new
     @bread_list = bread_list
+    @hash = hash
   end
 
   def my_download
@@ -31,10 +32,10 @@ class MyThreadPools
       result = JSON.parse(read_file.read)['message']
     end
     CSV.open("./data/#{bread_name}.csv", 'a+') do |saved_file|
-      puts bread_name
       saved_file << headers
       result.each { |line| saved_file << %W[#{bread_name} #{line}] }
     end
+    @hash.store("#{bread_name}.csv", Time.now.to_s)
   end
 
   def main
@@ -47,16 +48,16 @@ class MyThreadPools
     # puts "Started At #{Time.now}\n"
     arr.each(&:join)
     # puts "End at #{Time.now}\n"
+    @hash
   end
 end
 
 mutex = Mutex
 bread_list = []
+hash = {}
 open('https://dog.ceo/api/breeds/list') do |json|
   bread_list = JSON.parse(json.read)['message']
-  open('./data/updated_at.json', 'w') do |update_at|
-    bread_list.each { |file_name| update_at.write("#{file_name}.csv\n") }
-  end
 end
-mpt = MyThreadPools.new(bread_list, mutex)
-mpt.main
+mpt = MyThreadPools.new(bread_list, mutex, hash)
+hash = mpt.main
+File.write('./data/updated_at.json', JSON.dump(hash))
